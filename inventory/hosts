@@ -1,0 +1,10 @@
+[nexus]
+ipaddress
+
+[nexus:vars]
+nexus_version=3.15.1-01
+
+[all:vars]
+ansible_connection=ssh
+
+test
