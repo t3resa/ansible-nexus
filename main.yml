@@ -1,0 +1,76 @@
+---
+- hosts: nexus
+  become: yes
+  tasks:
+    - name: install packages
+      yum:
+        name:
+          - wget
+          - java-1.8.0-openjdk-devel
+          - java-1.8.0-openjdk
+          - git
+        state: latest
+        update_cache: yes
+      tags: 
+        - install 
+
+    
+    - name: Nexus | Create home directory
+      file:
+        path: /opt/nexus
+        state: directory
+        mode: 0755
+      tags:
+        - nexus
+
+    - name: Nexus | Retrieving artifact.tar.gz
+      get_url:
+        url: http://download.sonatype.com/nexus/3/nexus-{{nexus_version}}-unix.tar.gz
+        dest: /opt
+      tags: 
+        - nexus
+    
+    - name: Unarchive a file that needs to be downloaded
+      unarchive:
+        src: /opt/nexus-{{nexus_version}}-unix.tar.gz
+        dest: /opt
+        remote_src: yes
+      when: not ansible_check_mode
+      tags: 
+        - nexus
+
+    - name: creating nexus user
+      user:
+        name: nexus
+
+# Giving Nexus user ownership to the files
+    - file:
+        path: /opt
+        owner: nexus
+        recurse: yes
+
+# Running as Nexus User
+    - replace:
+        path: /opt/nexus/nexus-{{nexus_version}}/bin/nexus.rc
+        regexp: '#run_as_user=""'
+        replace: 'run_as_user="nexus"'
+        backup: yes
+
+    - name: Create symbolic link 
+      file:
+        src: "/opt/nexus/nexus-{{nexus_version}}/bin/nexus"
+        dest: "/etc/init.d/nexus"
+        owner: nexus
+        state: link
+      tags:
+        - link 
+        
+    - name: Start Nexus
+      systemd: 
+        name: nexus
+        enabled: yes
+        state: started
+      tags:
+        - start
+
+
